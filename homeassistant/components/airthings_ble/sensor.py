@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 
+from datetime import datetime
 from airthings_ble import AirthingsDevice
 
 from homeassistant import config_entries
@@ -179,8 +180,22 @@ class AirthingsSensor(
             hw_version=airthings_device.hw_version,
             sw_version=airthings_device.sw_version,
         )
+        self._last_update = None
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        coordinator_state = super().available
+        if (coordinator_state == True or self._last_update is None):
+            return coordinator_state
+        return ((datetime.now()-self._last_update).total_seconds() <= 900)
 
     @property
     def native_value(self) -> StateType:
         """Return the value reported by the sensor."""
-        return self.coordinator.data.sensors[self.entity_description.key]
+        try:
+            val = self.coordinator.data.sensors[self.entity_description.key]
+            self._last_update = datetime.now()
+            return val
+        except:
+            return None
